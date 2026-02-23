@@ -1,0 +1,39 @@
+/* Under Construction / Coming Soon styles */
+
+.under-construction {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+}
+
+.construction-logo {
+  width: 120px;
+  height: auto;
+  margin-bottom: 1rem;
+}
+
+.construction-title {
+  font-size: 2.5rem;
+  color: #495e57;
+  margin: 0;
+  font-weight: 700;
+}
+
+@media screen and (max-width: 767px) {
+  .construction-logo {
+    width: 90px;
+  }
+  .construction-title {
+    font-size: 1.5rem;
+  }
+}
+
+/* fallback container sizing for layout consistency */
+.container {
+  height: calc(100vh - 96px);
+  width: 100vw;
+}

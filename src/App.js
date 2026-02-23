@@ -1,25 +1,33 @@
-import logo from './logo.svg';
-import './App.css';
+import "./App.css";
+import Home from "./pages/Home/Home";
+import { Route, Routes } from "react-router-dom";
+import pages from "./tools/pages";
+import Layout from "./layouts/Layout/Layout";
+import Menu from "./pages/Menu/Menu";
+import Orders from "./pages/Orders/Orders";
+import About from "./pages/About/About";
+import Login from "./pages/Login/Login";
+import Reservations from "./pages/Reservations/Reservations";
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div data-testid="app-component">
+      <Layout>
+        <Routes>
+          <Route path={pages.get("home").path} element={<Home />} />
+          <Route path={pages.get("about").path} element={<About />} />
+          <Route path={pages.get("menu").path} element={<Menu />} />
+          <Route
+            path={pages.get("reservations").path}
+            element={<Reservations />}
+          />
+          <Route path={pages.get("orders").path} element={<Orders />} />
+          <Route path={pages.get("login").path} element={<Login />} />
+          <Route path="*" element={<Home />} />
+        </Routes>
+      </Layout>
     </div>
   );
-}
+};
 
 export default App;
