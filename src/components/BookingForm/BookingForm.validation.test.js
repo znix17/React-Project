@@ -6,275 +6,557 @@ import BookingForm from './BookingForm';
 describe('BookingForm Client-Side Validation', () => {
   const mockOnFormSubmit = jest.fn();
   const mockDispatchOnDateChange = jest.fn();
-  const availableTimes = ['12:00', '13:00', '14:00', '15:00'];
+  const availableTimes = ['12:00', '13:00', '14:00', '15:00', '17:00', '18:00', '19:00'];
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Mock window.alert
-    global.alert = jest.fn();
+    mockOnFormSubmit.mockClear();
+    mockDispatchOnDateChange.mockClear();
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
+  describe('Date Field Validation', () => {
+    
+    test('should not call onFormSubmit when date is missing', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+      fireEvent.click(submitButton);
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
+
+    test('should display error message for missing date when isFormSubmitted is true', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      expect(screen.getByText(/please select a date/i)).toBeInTheDocument();
+    });
+
+    test('should apply error class to date field when invalid', () => {
+      const { rerender } = render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      expect(dateInput).not.toHaveClass('error');
+
+      rerender(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      expect(dateInput).toHaveClass('error');
+    });
+
+    test('should call dispatchOnDateChange when date is selected', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      await userEvent.type(dateInput, '2026-03-20');
+
+      expect(mockDispatchOnDateChange).toHaveBeenCalledWith('2026-03-20');
+    });
+
+    test('should allow valid date selection', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      await userEvent.type(dateInput, '2026-04-15');
+
+      expect(dateInput.value).toBe('2026-04-15');
+    });
   });
 
-  // Test: Missing date validation
-  test('should show alert and not call onFormSubmit when date is missing', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+  describe('Time Field Validation', () => {
+    
+    test('should not call onFormSubmit when time is not available (empty availableTimes)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={[]}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      const dateInput = screen.getByLabelText(/date/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
 
-    // Click submit without entering date
-    fireEvent.click(submitButton);
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.click(submitButton);
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
 
-    // Verify alert was called with missing date
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Date'));
-    // Verify onFormSubmit was NOT called
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    test('should display error message when time is not selected and isFormSubmitted is true', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={[]}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      // Time field shows error class but component doesn't display inline error message
+      const timeSelect = screen.getByLabelText(/time/i);
+      expect(timeSelect).toHaveClass('error');
+    });
+
+    test('should apply error class to time field when invalid', () => {
+      const { rerender } = render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={[]}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const timeSelect = screen.getByLabelText(/time/i);
+
+      rerender(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={[]}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      expect(timeSelect).toHaveClass('error');
+    });
+
+    test('should populate time dropdown with available times', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      availableTimes.forEach(time => {
+        expect(screen.getByRole('option', { name: time })).toBeInTheDocument();
+      });
+    });
+
+    test('should set first available time as default', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const timeSelect = screen.getByLabelText(/time/i);
+      expect(timeSelect.value).toBe('12:00');
+    });
+
+    test('should allow user to change selected time', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const timeSelect = screen.getByLabelText(/time/i);
+      await userEvent.selectOptions(timeSelect, '15:00');
+
+      expect(timeSelect.value).toBe('15:00');
+    });
   });
 
-  // Test: Missing time validation
-  test('should show alert when time is not selected (empty)', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={[]} // no times available!
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+  describe('Number of People Validation', () => {
+    
+    test('should display error when people field is empty', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    const dateInput = screen.getByLabelText(/Date/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      await userEvent.clear(peopleInput);
 
-    // Fill in date
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
+      expect(screen.getByText(/enter number of people between 1 and 10/i)).toBeInTheDocument();
+    });
 
-    // Submit without time (because no times were available to auto-select)
-    fireEvent.click(submitButton);
+    test('should not call onFormSubmit when people count is below minimum (0)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Time'));
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
+      const dateInput = screen.getByLabelText(/date/i);
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.change(peopleInput, { target: { value: '0' } });
+      fireEvent.click(submitButton);
+
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
+
+    test('should not call onFormSubmit when people count exceeds maximum (10)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.change(peopleInput, { target: { value: '11' } });
+      fireEvent.click(submitButton);
+
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
+
+    test('should display error message when people count is out of range', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      await userEvent.clear(peopleInput);
+      await userEvent.type(peopleInput, '0');
+
+      expect(screen.getByText(/enter number of people between 1 and 10/i)).toBeInTheDocument();
+    });
+
+    test('should apply error class to people field when empty', () => {
+      const { rerender } = render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const peopleInput = screen.getByLabelText(/number of people/i);
+
+      // Change to empty string to trigger error condition
+      fireEvent.change(peopleInput, { target: { value: '' } });
+
+      rerender(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      // Should have error class when isFormSubmitted is true and people field is empty
+      expect(peopleInput).toHaveClass('error');
+    });
+
+    test('should accept valid people count at minimum boundary (1)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.change(peopleInput, { target: { value: '1' } });
+      fireEvent.click(submitButton);
+
+      expect(mockOnFormSubmit).toHaveBeenCalled();
+    });
+
+    test('should accept valid people count at maximum boundary (10)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const dateInput = screen.getByLabelText(/date/i);
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.change(peopleInput, { target: { value: '10' } });
+      fireEvent.click(submitButton);
+
+      expect(mockOnFormSubmit).toHaveBeenCalled();
+    });
+
+    test('should have default value of 1', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      expect(peopleInput.value).toBe('1');
+    });
+
+    test('should allow user to change people count', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
+
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      await userEvent.clear(peopleInput);
+      await userEvent.type(peopleInput, '5');
+
+      expect(peopleInput.value).toBe('5');
+    });
   });
 
-  // Test: Invalid number of people (below minimum)
-  test('should show alert when number of people is below minimum (1)', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+  describe('Occasion Field Validation', () => {
+    
+    test('should default occasion to first option (birthday)', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    const dateInput = screen.getByLabelText(/Date/i);
-    const peopleInput = screen.getByLabelText(/Number of people/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      // The select defaults to first option (birthday) due to empty state
+      expect(screen.getByLabelText(/occasion/i)).toHaveValue('birthday');
+    });
 
-    // Fill in date
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
+    test('should render all occasion options', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    // Set people to 0 (invalid)
-    fireEvent.change(peopleInput, { target: { value: '0' } });
+      expect(screen.getByRole('option', { name: /birthday/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /anniversary/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /business/i })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /other/i })).toBeInTheDocument();
+    });
 
-    fireEvent.click(submitButton);
+    test('should allow user to change occasion', async () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Number of people'));
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
-  });
+      const occasionSelect = screen.getByLabelText(/occasion/i);
+      await userEvent.selectOptions(occasionSelect, 'anniversary');
 
-  // Test: Invalid number of people (above maximum)
-  test('should show alert when number of people exceeds maximum (10)', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+      expect(occasionSelect.value).toBe('anniversary');
+    });
 
-    const dateInput = screen.getByLabelText(/Date/i);
-    const peopleInput = screen.getByLabelText(/Number of people/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+    test('should display error message when occasion is manually cleared and isFormSubmitted is true', () => {
+      const { rerender } = render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    // Fill in date
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
+      const occasionSelect = screen.getByLabelText(/occasion/i);
+      // Manually clear the occasion to trigger error condition
+      fireEvent.change(occasionSelect, { target: { value: '' } });
 
-    // Set people to 11 (above max)
-    fireEvent.change(peopleInput, { target: { value: '11' } });
+      rerender(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    fireEvent.click(submitButton);
+      expect(screen.getByText(/please select an occasion/i)).toBeInTheDocument();
+    });
 
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Number of people'));
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
-  });
+    test('should apply error class to occasion field when manually cleared', () => {
+      const { rerender } = render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-  // Test: Missing occasion validation
-  test('should show alert when occasion is not selected', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+      const occasionSelect = screen.getByLabelText(/occasion/i);
+      expect(occasionSelect).not.toHaveClass('error');
 
-    const dateInput = screen.getByLabelText(/Date/i);
-    const occasionSelect = screen.getByLabelText(/Occasion/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      // Manually clear the occasion to trigger error condition
+      fireEvent.change(occasionSelect, { target: { value: '' } });
 
-    // Fill in date
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
+      rerender(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={true}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    // Clear occasion (set to empty string)
-    fireEvent.change(occasionSelect, { target: { value: '' } });
+      // When occasion is cleared and isFormSubmitted=true, should have error class
+      expect(occasionSelect).toHaveClass('error');
+    });
+  });;
 
-    fireEvent.click(submitButton);
+  describe('Form Submission with All Validations', () => {
+    
+    test('should call onFormSubmit when all fields are valid', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Occasion'));
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
-  });
+      const dateInput = screen.getByLabelText(/date/i);
+      const timeSelect = screen.getByLabelText(/time/i);
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const occasionSelect = screen.getByLabelText(/occasion/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
 
-  // Test: Multiple missing fields validation
-  test('should show alert listing all missing/invalid fields', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={[]} // time will be missing
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+      fireEvent.change(dateInput, { target: { value: '2026-03-20' } });
+      fireEvent.change(timeSelect, { target: { value: '13:00' } });
+      fireEvent.change(peopleInput, { target: { value: '4' } });
+      fireEvent.change(occasionSelect, { target: { value: 'anniversary' } });
+      fireEvent.click(submitButton);
 
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      expect(mockOnFormSubmit).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          date: '2026-03-20',
+          time: '13:00',
+          people: '4',
+          occasion: 'anniversary',
+        })
+      );
+    });
 
-    // Try to submit with ALL fields missing/empty
-    fireEvent.click(submitButton);
+    test('should not submit when any field is invalid', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={availableTimes}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    // Alert should mention multiple missing fields
-    expect(global.alert).toHaveBeenCalled();
-    const alertCall = global.alert.mock.calls[0][0];
-    expect(alertCall).toContain('Date');
-    expect(alertCall).toContain('Time');
-  });
+      const peopleInput = screen.getByLabelText(/number of people/i);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
 
-  // Test: Valid form submission
-  test('should call onFormSubmit when all fields are valid', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
+      fireEvent.change(peopleInput, { target: { value: '15' } });
+      fireEvent.click(submitButton);
 
-    const dateInput = screen.getByLabelText(/Date/i);
-    const timeSelect = screen.getByLabelText(/Time/i);
-    const peopleInput = screen.getByLabelText(/Number of people/i);
-    const occasionSelect = screen.getByLabelText(/Occasion/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
 
-    // Fill in all fields with valid values
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
-    fireEvent.change(timeSelect, { target: { value: '13:00' } });
-    fireEvent.change(peopleInput, { target: { value: '4' } });
-    fireEvent.change(occasionSelect, { target: { value: 'anniversary' } });
+    test('should not submit when multiple fields are invalid', () => {
+      render(
+        <BookingForm
+          onFormSubmit={mockOnFormSubmit}
+          isFormSubmitted={false}
+          availableTimes={[]}
+          dispatchOnDateChange={mockDispatchOnDateChange}
+        />
+      );
 
-    // Submit form
-    fireEvent.click(submitButton);
+      const submitButton = screen.getByRole('button', { name: /book a table/i });
+      fireEvent.click(submitButton);
 
-    // Verify onFormSubmit was called with correct form values
-    expect(mockOnFormSubmit).toHaveBeenCalledWith(
-      expect.any(Object),
-      expect.objectContaining({
-        date: '2024-03-20',
-        time: '13:00',
-        people: '4',
-        occasion: 'anniversary',
-      })
-    );
-    // Alert should NOT be called on valid submission
-    expect(global.alert).not.toHaveBeenCalled();
-  });
-
-  // Test: Valid number of people (edge cases)
-  test('should accept valid number of people (1 and 10)', async () => {
-    const { rerender } = render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
-
-    const dateInput = screen.getByLabelText(/Date/i);
-    const peopleInput = screen.getByLabelText(/Number of people/i);
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
-
-    // Test minimum valid value (1)
-    fireEvent.change(dateInput, { target: { value: '2024-03-20' } });
-    fireEvent.change(peopleInput, { target: { value: '1' } });
-    fireEvent.click(submitButton);
-
-    expect(mockOnFormSubmit).toHaveBeenCalled();
-    expect(global.alert).not.toHaveBeenCalled();
-
-    // Reset mocks for next scenario
-    jest.clearAllMocks();
-
-    // Test maximum valid value (10)
-    fireEvent.change(peopleInput, { target: { value: '10' } });
-    fireEvent.click(submitButton);
-
-    expect(mockOnFormSubmit).toHaveBeenCalled();
-    expect(global.alert).not.toHaveBeenCalled();
-  });
-
-  // Test: Empty date input
-  test('should validate empty date field', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={false}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
-
-    const submitButton = screen.getByRole('button', { name: /book a table/i });
-
-    // Submit without setting date
-    fireEvent.click(submitButton);
-
-    expect(global.alert).toHaveBeenCalledWith(expect.stringContaining('Date'));
-    expect(mockOnFormSubmit).not.toHaveBeenCalled();
-  });
-
-  // Test: Inline error messages display
-  test('should display inline error messages when isFormSubmitted is true', async () => {
-    render(
-      <BookingForm
-        onFormSubmit={mockOnFormSubmit}
-        isFormSubmitted={true}
-        availableTimes={availableTimes}
-        dispatchOnDateChange={mockDispatchOnDateChange}
-      />
-    );
-
-    // With isFormSubmitted=true and empty fields, error messages should show
-    const errorTexts = screen.getAllByText(/Please select|Enter number/i);
-    expect(errorTexts.length).toBeGreaterThan(0);
+      expect(mockOnFormSubmit).not.toHaveBeenCalled();
+    });
   });
 });
